@@ -6,18 +6,8 @@ import numpy as np
 
 from common import argument_parser
 from common import load_pretrained, load_tsv_data
-from common import encode_tokenized
+from common import tokenize_texts, encode_tokenized
 from common import create_model, create_optimizer
-
-
-def tokenize_texts(texts, tokenizer):
-    tokenized = []
-    for left, span, right in texts:
-        left_tok = tokenizer.tokenize(left)
-        span_tok = tokenizer.tokenize(span)
-        right_tok = tokenizer.tokenize(right)
-        tokenized.append([left_tok, span_tok, right_tok])
-    return tokenized
 
 
 def main(argv):

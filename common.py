@@ -75,6 +75,10 @@ def argument_parser(mode):
             '--warmup_proportion', type=float, default=DEFAULT_WARMUP_PROPORTION,
             help='Proportion of training to perform LR warmup for'
         )
+        argparser.add_argument(
+            '--replace_span', default=None,
+            help='Replace span text with given special token'
+        )
     argparser.add_argument(
         '--label_field', type=int, default=-4,
         help='Index of label in TSV data (1-based)'
@@ -139,13 +143,27 @@ def create_optimizer(num_example, options):
     return optimizer
 
 
+def tokenize_texts(texts, tokenizer):
+    tokenized = []
+    for left, span, right in texts:
+        left_tok = tokenizer.tokenize(left)
+        span_tok = tokenizer.tokenize(span)
+        right_tok = tokenizer.tokenize(right)
+        tokenized.append([left_tok, span_tok, right_tok])
+    return tokenized
+
+
 def encode_tokenized(tokenized_texts, tokenizer, options):
     seq_len = options.max_seq_length
     tids, sids = [], []
     for left, span, right in tokenized_texts:
         tokens = ['[CLS]']
-        for t in (left, span, right):
-            tokens.extend(t)
+        tokens.extend(left)
+        if options.replace_span is None:
+            tokens.extend(span)
+        else:
+            tokens.append(options.replace_span)
+        tokens.extend(right)
         if len(tokens) >= seq_len-1:    # -1 for [SEP]
             tokens, chopped = tokens[:seq_len-1], tokens[seq_len-1:]
             warning('chopping tokens to {}: {} ///// {}'.format(
