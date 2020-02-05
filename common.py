@@ -2,6 +2,7 @@
 
 import sys
 import os
+import json
 
 os.environ['TF_KERAS'] = '1'
 
@@ -123,6 +124,65 @@ def create_model(pretrained_model, num_labels):
     )(cls_out)
     model = keras.models.Model(inputs=model_inputs, outputs=model_output)
     return model
+
+
+def _model_path(model_dir):
+    return os.path.join(model_dir, 'model.hdf5')
+
+
+def _vocab_path(model_dir):
+    return os.path.join(model_dir, 'vocab.txt')
+
+
+def _labels_path(model_dir):
+    return os.path.join(model_dir, 'labels.txt')
+
+
+def _config_path(model_dir):
+    return os.path.join(model_dir, 'config.json')
+
+
+def save_model(model, tokenizer, labels, options):
+    os.makedirs(options.model_dir, exist_ok=True)
+    config = {
+        'do_lower_case': options.do_lower_case,
+        'max_seq_length': options.max_seq_length,
+    }
+    with open(_config_path(options.model_dir), 'w') as out:
+        json.dump(config, out, indent=4)
+    model.save(_model_path(options.model_dir))
+    with open(_labels_path(options.model_dir), 'w') as out:
+        for label in labels:
+            print(label, file=out)
+    with open(_vocab_path(options.model_dir), 'w') as out:
+        for i, v in sorted(list(tokenizer.inv_vocab.items())):
+            print(v, file=out)
+
+
+def load_model(model_dir):
+    with open(_config_path(model_dir)) as f:
+        config = json.load(f)
+    model = keras.models.load_model(
+        _model_path(model_dir),
+        custom_objects=get_custom_objects()
+    )
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=_vocab_path(model_dir),
+        do_lower_case=config['do_lower_case']
+    )
+    labels = read_labels(_labels_path(model_dir))
+    return model, tokenizer, labels, config
+
+
+def read_labels(path):
+    labels = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line in labels:
+                raise ValueError('duplicate value {} in {}'.format(line, path))
+            labels.append(line)
+    return labels
 
 
 def create_optimizer(num_example, options):

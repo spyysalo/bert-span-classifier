@@ -7,7 +7,7 @@ import numpy as np
 from common import argument_parser
 from common import load_pretrained, load_tsv_data
 from common import tokenize_texts, encode_tokenized
-from common import create_model, create_optimizer
+from common import create_model, create_optimizer, save_model
 
 
 def main(argv):
@@ -60,6 +60,10 @@ def main(argv):
         correct, total = sum(g==p for g, p in zip(dev_y, preds)), len(dev_y)
         print('Final dev accuracy: {:.1%} ({}/{})'.format(
             correct/total, correct, total))
+
+    print('Saving model in {}'.format(args.model_dir))
+    if args.model_dir is not None:
+        save_model(model, tokenizer, label_list, args)
     
     return 0
 
