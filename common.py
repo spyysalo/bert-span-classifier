@@ -128,13 +128,13 @@ def load_pretrained(options):
     return model, tokenizer
 
 
-def create_model(pretrained_model, num_labels):
+def create_model(pretrained_model, num_labels, output_index=0):
     model_inputs = pretrained_model.inputs[:2]
-    cls_out = Lambda(lambda x: x[:, 0])(pretrained_model.output)
+    bert_out = Lambda(lambda x: x[:, output_index])(pretrained_model.output)
     model_output = keras.layers.Dense(
         num_labels,
         activation='softmax'
-    )(cls_out)
+    )(bert_out)
     model = keras.models.Model(inputs=model_inputs, outputs=model_output)
     return model
 
@@ -231,6 +231,11 @@ def encode_tokenized(tokenized_texts, tokenizer, seq_len, replace_span):
     tids, sids = [], []
     for left, span, right in tokenized_texts:
         tokens = ['[CLS]']
+        center = int(seq_len/2)
+        if len(left) > center-1:    # -1 for CLS
+            left = left[len(left)-(center-1):]
+        else:
+            left = ['[PAD]'] * ((center-1)-len(left)) + left
         tokens.extend(left)
         if not replace_span:
             tokens.extend(span)
