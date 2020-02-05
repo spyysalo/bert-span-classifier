@@ -98,11 +98,16 @@ def argument_parser(mode):
         '--batch_size', type=int, default=DEFAULT_BATCH_SIZE,
         help='Batch size for training'
     )
-    model_dir_required = mode in ('test', 'predict',)
+    model_dir_required = mode in ('test', 'predict', 'serve')
     argparser.add_argument(
         '--model_dir', default=None, required=model_dir_required,
         help='Trained model directory'
     )
+    if mode == 'serve':
+        argparser.add_argument(
+            '--port', default=9000,
+            help='Port to listen to'
+        )
     return argparser
 
 
