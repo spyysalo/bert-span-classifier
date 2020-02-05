@@ -89,11 +89,12 @@ def argument_parser(mode):
         '--text_fields', type=int, default=-3,
         help='Index of first text field in TSV data (1-based)'
     )
-    test_data_required = mode in ('test', 'predict',)
-    argparser.add_argument(
-        '--test_data', required=test_data_required,
-        help='Test data'
-    )
+    if mode != 'serve':
+        test_data_required = mode in ('test', 'predict',)
+        argparser.add_argument(
+            '--test_data', required=test_data_required,
+            help='Test data'
+        )
     argparser.add_argument(
         '--batch_size', type=int, default=DEFAULT_BATCH_SIZE,
         help='Batch size for training'
