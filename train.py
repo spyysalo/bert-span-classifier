@@ -19,8 +19,8 @@ def main(argv):
         dev_labels, dev_texts = None, None
     pretrained_model, tokenizer = load_pretrained(args)
 
-    max_seq_len = options.max_seq_length
-    replace_span = options.replace_span
+    max_seq_len = args.max_seq_length
+    replace_span = args.replace_span
 
     label_list = sorted(list(set(train_labels)))
     label_map = { l: i for i, l in enumerate(label_list) }
@@ -32,7 +32,7 @@ def main(argv):
 
     if dev_labels is not None and dev_texts is not None:
         dev_tok = tokenize_texts(dev_texts, tokenizer)
-        dev_x = encode_tokenized(dev_tok, tokenizer, args)
+        dev_x = encode_tokenized(dev_tok, tokenizer, max_seq_len, replace_span)
         dev_y = [label_map[l] for l in dev_labels]
         validation_data = (dev_x, dev_y)
     else:
