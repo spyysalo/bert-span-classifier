@@ -89,7 +89,7 @@ def argument_parser(mode):
         '--text_fields', type=int, default=-3,
         help='Index of first text field in TSV data (1-based)'
     )
-    test_data_required = mode in ('predict',)
+    test_data_required = mode in ('test', 'predict',)
     argparser.add_argument(
         '--test_data', required=test_data_required,
         help='Test data'
@@ -98,7 +98,7 @@ def argument_parser(mode):
         '--batch_size', type=int, default=DEFAULT_BATCH_SIZE,
         help='Batch size for training'
     )
-    model_dir_required = mode in ('predict',)
+    model_dir_required = mode in ('test', 'predict',)
     argparser.add_argument(
         '--model_dir', default=None, required=model_dir_required,
         help='Trained model directory'
@@ -154,6 +154,7 @@ def save_model(model, tokenizer, labels, options):
     config = {
         'do_lower_case': options.do_lower_case,
         'max_seq_length': options.max_seq_length,
+        'replace_span': options.replace_span,
     }
     with open(_config_path(options.model_dir), 'w') as out:
         json.dump(config, out, indent=4)
@@ -220,17 +221,11 @@ def tokenize_texts(texts, tokenizer):
     return tokenized
 
 
-def encode_tokenized(tokenized_texts, tokenizer, seq_len, options):
+def encode_tokenized(tokenized_texts, tokenizer, seq_len, replace_span):
     tids, sids = [], []
     for left, span, right in tokenized_texts:
         tokens = ['[CLS]']
         tokens.extend(left)
-        try:
-            replace_span = options.replace_span
-        except:
-            replace_span = '[unused1]'
-            warning('No replace_span setting, assuming default {}'.format(
-                replace_span))
         if not replace_span:
             tokens.extend(span)
         else:

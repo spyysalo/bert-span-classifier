@@ -9,10 +9,10 @@ from common import tokenize_texts, encode_tokenized
 
 
 def main(argv):
-    args = argument_parser('predict').parse_args(argv[1:])
+    args = argument_parser('test').parse_args(argv[1:])
 
     model, tokenizer, labels, config = load_model(args.model_dir)
-    _, test_texts = load_tsv_data(args.test_data, args)
+    test_labels, test_texts = load_tsv_data(args.test_data, args)
 
     max_seq_len = config['max_seq_length']
     replace_span = config['replace_span']
@@ -22,11 +22,13 @@ def main(argv):
 
     test_tok = tokenize_texts(test_texts, tokenizer)
     test_x = encode_tokenized(test_tok, tokenizer, max_seq_len, replace_span)
+    test_y = [label_map[l] for l in test_labels]
 
     probs = model.predict(test_x, batch_size=args.batch_size)
     preds = np.argmax(probs, axis=-1)
-    for p in preds:
-        print(inv_label_map[p])
+    correct, total = sum(g==p for g, p in zip(test_y, preds)), len(test_y)
+    print('Test accuracy: {:.1%} ({}/{})'.format(
+        correct/total, correct, total))
     
     return 0
 

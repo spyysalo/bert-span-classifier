@@ -19,12 +19,15 @@ def main(argv):
         dev_labels, dev_texts = None, None
     pretrained_model, tokenizer = load_pretrained(args)
 
+    max_seq_len = options.max_seq_length
+    replace_span = options.replace_span
+
     label_list = sorted(list(set(train_labels)))
     label_map = { l: i for i, l in enumerate(label_list) }
     inv_label_map = { v: k for k, v in label_map.items() }
 
     train_tok = tokenize_texts(train_texts, tokenizer)
-    train_x = encode_tokenized(train_tok, tokenizer, args.max_seq_len, args)
+    train_x = encode_tokenized(train_tok, tokenizer, max_seq_len, replace_span)
     train_y = [label_map[l] for l in train_labels]
 
     if dev_labels is not None and dev_texts is not None:
@@ -70,4 +73,3 @@ def main(argv):
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
-
