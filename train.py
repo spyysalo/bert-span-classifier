@@ -24,7 +24,7 @@ def main(argv):
     inv_label_map = { v: k for k, v in label_map.items() }
 
     train_tok = tokenize_texts(train_texts, tokenizer)
-    train_x = encode_tokenized(train_tok, tokenizer, args)
+    train_x = encode_tokenized(train_tok, tokenizer, args.max_seq_len, args)
     train_y = [label_map[l] for l in train_labels]
 
     if dev_labels is not None and dev_texts is not None:

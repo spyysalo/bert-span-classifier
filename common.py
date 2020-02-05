@@ -15,6 +15,7 @@ from tensorflow import keras
 from bert import tokenization
 from keras_bert import load_trained_model_from_checkpoint
 from keras_bert import calc_train_steps, AdamWarmup
+from keras_bert import get_custom_objects
 
 from tensorflow.keras.layers import Lambda
 
@@ -88,12 +89,18 @@ def argument_parser(mode):
         '--text_fields', type=int, default=-3,
         help='Index of first text field in TSV data (1-based)'
     )
+    test_data_required = mode in ('predict',)
+    argparser.add_argument(
+        '--test_data', required=test_data_required,
+        help='Test data'
+    )
     argparser.add_argument(
         '--batch_size', type=int, default=DEFAULT_BATCH_SIZE,
         help='Batch size for training'
     )
+    model_dir_required = mode in ('predict',)
     argparser.add_argument(
-        '--model_dir', default=None,
+        '--model_dir', default=None, required=model_dir_required,
         help='Trained model directory'
     )
     return argparser
@@ -213,16 +220,21 @@ def tokenize_texts(texts, tokenizer):
     return tokenized
 
 
-def encode_tokenized(tokenized_texts, tokenizer, options):
-    seq_len = options.max_seq_length
+def encode_tokenized(tokenized_texts, tokenizer, seq_len, options):
     tids, sids = [], []
     for left, span, right in tokenized_texts:
         tokens = ['[CLS]']
         tokens.extend(left)
-        if options.replace_span is None:
+        try:
+            replace_span = options.replace_span
+        except:
+            replace_span = '[unused1]'
+            warning('No replace_span setting, assuming default {}'.format(
+                replace_span))
+        if not replace_span:
             tokens.extend(span)
         else:
-            tokens.append(options.replace_span)
+            tokens.append(replace_span)
         tokens.extend(right)
         if len(tokens) >= seq_len-1:    # -1 for [SEP]
             tokens, chopped = tokens[:seq_len-1], tokens[seq_len-1:]
