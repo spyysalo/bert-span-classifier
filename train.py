@@ -38,7 +38,7 @@ def main(argv):
     else:
         validation_data = None
 
-    model = create_model(pretrained_model, len(label_list))
+    model = create_model(pretrained_model, len(label_list), int(max_seq_len/2))
     model.summary(print_fn=print)
 
     optimizer = create_optimizer(len(train_x[0]), args)
@@ -64,8 +64,8 @@ def main(argv):
         print('Final dev accuracy: {:.1%} ({}/{})'.format(
             correct/total, correct, total))
 
-    print('Saving model in {}'.format(args.model_dir))
     if args.model_dir is not None:
+        print('Saving model in {}'.format(args.model_dir))
         save_model(model, tokenizer, label_list, args)
     
     return 0
