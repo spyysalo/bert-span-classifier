@@ -4,6 +4,7 @@ import sys
 import tensorflow as tf
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 from common import argument_parser
 from common import load_model
@@ -11,6 +12,7 @@ from common import tokenize_texts, encode_tokenized
 
 
 app = Flask(__name__)
+CORS(app)
 
 
 @app.route('/')
@@ -29,7 +31,10 @@ def predict():
     with app.graph.as_default():
         with app.session.as_default():
             probs = model.predict(test_x)
-    return jsonify({ l: float(p) for l, p in zip(labels, list(probs[0])) })
+    response = { l: float(p) for l, p in zip(labels, list(probs[0])) }
+    for i, k in enumerate(('left', 'span', 'right')):
+        response[k] = tokenized[0][i]
+    return jsonify(response)
 
 
 def main(argv):
