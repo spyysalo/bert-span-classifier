@@ -55,8 +55,8 @@ ln -s logs/$SLURM_JOBID.out latest.out
 ln -s logs/$SLURM_JOBID.err latest.err
 
 module purge
-module load tensorflow
-source $HOME/venv/span-bert/bin/activate
+module load tensorflow/2.0.0
+source venv/bin/activate
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
