@@ -1,5 +1,4 @@
-tensorflow==1.15.2
+tensorflow
 keras-bert
-bert-tensorflow
 flask
 flask-cors
