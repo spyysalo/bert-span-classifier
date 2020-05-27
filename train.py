@@ -28,12 +28,12 @@ def main(argv):
 
     train_tok = tokenize_texts(train_texts, tokenizer)
     train_x = encode_tokenized(train_tok, tokenizer, max_seq_len, replace_span)
-    train_y = [label_map[l] for l in train_labels]
+    train_y = np.array([label_map[l] for l in train_labels])
 
     if dev_labels is not None and dev_texts is not None:
         dev_tok = tokenize_texts(dev_texts, tokenizer)
         dev_x = encode_tokenized(dev_tok, tokenizer, max_seq_len, replace_span)
-        dev_y = [label_map[l] for l in dev_labels]
+        dev_y = np.array([label_map[l] for l in dev_labels])
         validation_data = (dev_x, dev_y)
     else:
         validation_data = None

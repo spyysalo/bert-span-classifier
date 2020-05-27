@@ -4,6 +4,8 @@ import sys
 import os
 import json
 
+import numpy as np
+
 os.environ['TF_KERAS'] = '1'
 
 from functools import wraps
@@ -12,7 +14,7 @@ from argparse import ArgumentParser
 from logging import warning
 
 from tensorflow import keras
-from bert import tokenization
+import bert_tokenization as tokenization
 from keras_bert import load_trained_model_from_checkpoint
 from keras_bert import calc_train_steps, AdamWarmup
 from keras_bert import get_custom_objects
@@ -255,7 +257,7 @@ def encode_tokenized(tokenized_texts, tokenizer, seq_len, replace_span):
     # Sanity check
     assert all(len(t) == seq_len for t in tids)
     assert all(len(s) == seq_len for s in sids)
-    return tids, sids
+    return np.array(tids), np.array(sids)
 
 
 def load_tsv_data(fn, options):
