@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=10
 #SBATCH --mem=4G
 #SBATCH -p gpu
 #SBATCH -t 00:20:00
@@ -93,6 +93,6 @@ echo -n 'num_train_epochs'$'\t'"$EPOCHS"$'\t'
 echo -n 'other_parameters'$'\t'"$otherparams"$'\t'
 echo 'accuracy'$'\t'"$result"
 
-seff $SLURM_JOBID
+gpuseff $SLURM_JOBID
 
 echo "END $SLURM_JOBID: $(date)"
