@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 #SBATCH -p gpu
-#SBATCH -t 06:00:00
+#SBATCH -t 00:20:00
 #SBATCH --gres=gpu:v100:1
 #SBATCH --ntasks-per-node=1
 #SBATCH --account=Project_2001426
@@ -19,8 +19,8 @@ function on_exit {
 }
 trap on_exit EXIT
 
-if [ "$#" -ne 6 ] && [ "$#" -ne 7 ]; then
-    echo "Usage: $0 model data_dir seq_len batch_size learning_rate epochs [model_dir]"
+if [[ "$#" -lt 6 ]]; then
+    echo "Usage: $0 model data_dir seq_len batch_size learning_rate epochs [model_dir] [--other-args]"
     exit 1
 fi
 
@@ -30,11 +30,14 @@ MAX_SEQ_LENGTH="$3"
 BATCH_SIZE="$4"
 LEARNING_RATE="$5"
 EPOCHS="$6"
-if [ "$#" -eq 7 ]; then
+if [[ "$#" -gt 6 ]] && [[ "$7" != --* ]]; then
     modelparam="--model_dir $7"
+    shift 7
 else
     modelparam=""
+    shift 6
 fi
+otherparams="$@"
 
 VOCAB="$(dirname "$MODEL")/vocab.txt"
 CONFIG="$(dirname "$MODEL")/bert_config.json"
@@ -74,7 +77,8 @@ srun python3 train.py \
     --train_data "$DATA_DIR/train.tsv" \
     --dev_data "$DATA_DIR/dev.tsv" \
     $caseparam \
-    $modelparam
+    $modelparam \
+    $otherparams
 
 result=$(egrep '^Final dev accuracy:' logs/${SLURM_JOB_ID}.out | perl -pe 's/.*accuracy: (\S+)\%.*/$1/')
 
@@ -85,7 +89,8 @@ echo -n 'max_seq_length'$'\t'"$MAX_SEQ_LENGTH"$'\t'
 echo -n 'train_batch_size'$'\t'"$BATCH_SIZE"$'\t'
 echo -n 'learning_rate'$'\t'"$LEARNING_RATE"$'\t'
 echo -n 'num_train_epochs'$'\t'"$EPOCHS"$'\t'
-echo "$result"
+echo -n 'other_parameters'$'\t'"$otherparams"$'\t'
+echo 'accuracy'$'\t'"$result"
 
 seff $SLURM_JOBID
 
