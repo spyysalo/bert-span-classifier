@@ -21,6 +21,7 @@ from keras_bert import calc_train_steps, AdamWarmup
 from keras_bert import get_custom_objects
 
 from tensorflow.keras.layers import Average, Concatenate
+from tensorflow.keras.utils import Sequence
 
 from config import DEFAULT_SEQ_LEN, DEFAULT_BATCH_SIZE, DEFAULT_EPOCHS
 from config import DEFAULT_LR, DEFAULT_WARMUP_PROPORTION
@@ -43,6 +44,10 @@ def argument_parser(mode):
         argparser.add_argument(
             '--train_data', required=True,
             help='Training data'
+        )
+        argparser.add_argument(
+            '--labels', required=True,
+            help='File containing list of labels'
         )
         argparser.add_argument(
             '--dev_data', default=None,
@@ -227,11 +232,11 @@ def load_model(model_dir):
         vocab_file=_vocab_path(model_dir),
         do_lower_case=config['do_lower_case']
     )
-    labels = read_labels(_labels_path(model_dir))
+    labels = load_labels(_labels_path(model_dir))
     return model, tokenizer, labels, config
 
 
-def read_labels(path):
+def load_labels(path):
     labels = []
     with open(path) as f:
         for line in f:
@@ -301,22 +306,38 @@ def encode_tokenized(tokenized_texts, tokenizer, seq_len, replace_span):
     return np.array(tids), np.array(sids)
 
 
+def positive_index(i, fields):
+    return i if i >= 0 else len(fields)+i
+
+
+def parse_tsv_line(l, ln, fn, options):
+    l = l.rstrip('\n')
+    fields = l.split('\t')
+    if len(fields) < 4:
+        raise ValueError(
+            'Expected at least 4 tab-separated fields, got '
+            '{} on {} line {}: {}'.format(len(fields), fn, ln, l)
+        )
+    label = fields[options.label_field]
+    text_end = positive_index(options.text_fields, fields) + 3
+    text = fields[options.text_fields:text_end]
+    return label, text
+
+
 def load_tsv_data(fn, options):
-    def positive_index(i, fields):
-        return i if i >= 0 else len(fields)+i
     labels, texts = [], []
     with open(fn) as f:
         for ln, l in enumerate(f, start=1):
-            l = l.rstrip('\n')
-            fields = l.split('\t')
-            if len(fields) < 4:
-                raise ValueError(
-                    'Expected at least 4 tab-separated fields, got '
-                    '{} on {} line {}: {}'.format(len(fields), fn, ln, l)
-                )
-            label = fields[options.label_field]
-            text_end = positive_index(options.text_fields, fields) + 3
-            text = fields[options.text_fields:text_end]
+            label, text = parse_tsv_line(l, ln, fn, options)
             labels.append(label)
             texts.append(text)
     return labels, texts
+
+
+@timed
+def load_dataset(fn, tokenizer, max_seq_len, replace_span, label_map, options):
+    labels, texts = load_tsv_data(fn, options)
+    tokenized = tokenize_texts(texts, tokenizer)
+    x = encode_tokenized(tokenized, tokenizer, max_seq_len, replace_span)
+    y = np.array([label_map[l] for l in labels])
+    return x, y

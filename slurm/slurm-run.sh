@@ -76,6 +76,7 @@ srun python3 train.py \
     --num_train_epochs $EPOCHS \
     --train_data "$DATA_DIR/train.tsv" \
     --dev_data "$DATA_DIR/dev.tsv" \
+    --labels "$DATA_DIR/labels.txt" \
     $caseparam \
     $modelparam \
     $otherparams

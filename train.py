@@ -5,40 +5,34 @@ import sys
 import numpy as np
 
 from common import argument_parser
-from common import load_pretrained, load_tsv_data
+from common import load_pretrained, load_labels, load_dataset
 from common import tokenize_texts, encode_tokenized
 from common import create_model, create_optimizer, save_model
 
 
 def main(argv):
     args = argument_parser('train').parse_args(argv[1:])
-    train_labels, train_texts = load_tsv_data(args.train_data, args)
-    if args.dev_data is not None:
-        dev_labels, dev_texts = load_tsv_data(args.dev_data, args)
-    else:
-        dev_labels, dev_texts = None, None
     pretrained_model, tokenizer = load_pretrained(args)
 
-    max_seq_len = args.max_seq_length
-    replace_span = args.replace_span
-
-    label_list = sorted(list(set(train_labels)))
+    label_list = load_labels(args.labels)
     label_map = { l: i for i, l in enumerate(label_list) }
     inv_label_map = { v: k for k, v in label_map.items() }
 
-    train_tok = tokenize_texts(train_texts, tokenizer)
-    train_x = encode_tokenized(train_tok, tokenizer, max_seq_len, replace_span)
-    train_y = np.array([label_map[l] for l in train_labels])
+    train_x, train_y = load_dataset(args.train_data, tokenizer,
+                                    args.max_seq_length, args.replace_span,
+                                    label_map, args)
 
-    if dev_labels is not None and dev_texts is not None:
-        dev_tok = tokenize_texts(dev_texts, tokenizer)
-        dev_x = encode_tokenized(dev_tok, tokenizer, max_seq_len, replace_span)
-        dev_y = np.array([label_map[l] for l in dev_labels])
-        validation_data = (dev_x, dev_y)
-    else:
+    if args.dev_data is None:
+        dev_x, dev_y = None, None
         validation_data = None
+    else:
+        dev_x, dev_y = load_dataset(args.dev_data, tokenizer,
+                                    args.max_seq_length, args.replace_span,
+                                    label_map, args)
+        validation_data = (dev_x, dev_y)
 
-    model = create_model(pretrained_model, len(label_list), int(max_seq_len/2),
+    output_offset = int(args.max_seq_length/2)
+    model = create_model(pretrained_model, len(label_list), output_offset,
                          args.output_layer)
     model.summary(print_fn=print)
 
