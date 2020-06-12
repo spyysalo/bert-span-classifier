@@ -38,7 +38,8 @@ def main(argv):
     else:
         validation_data = None
 
-    model = create_model(pretrained_model, len(label_list), int(max_seq_len/2))
+    model = create_model(pretrained_model, len(label_list), int(max_seq_len/2),
+                         args.output_layer)
     model.summary(print_fn=print)
 
     optimizer = create_optimizer(len(train_x[0]), args)
