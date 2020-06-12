@@ -8,6 +8,7 @@ import numpy as np
 
 os.environ['TF_KERAS'] = '1'
 
+from itertools import count
 from functools import wraps
 from time import time
 from argparse import ArgumentParser
@@ -19,7 +20,7 @@ from keras_bert import load_trained_model_from_checkpoint
 from keras_bert import calc_train_steps, AdamWarmup
 from keras_bert import get_custom_objects
 
-from tensorflow.keras.layers import Lambda
+from tensorflow.keras.layers import Average, Concatenate
 
 from config import DEFAULT_SEQ_LEN, DEFAULT_BATCH_SIZE, DEFAULT_EPOCHS
 from config import DEFAULT_LR, DEFAULT_WARMUP_PROPORTION
@@ -62,6 +63,10 @@ def argument_parser(mode):
         argparser.add_argument(
             '--max_seq_length', type=int, default=DEFAULT_SEQ_LEN,
             help='Maximum input sequence length in WordPieces'
+        )
+        argparser.add_argument(
+            '--output-layer', default='-1',
+            help='BERT output layer (int, -1 for last, "avg", or "concat")'
         )
         argparser.add_argument(
             '--do_lower_case', default=False, action='store_true',
@@ -130,13 +135,49 @@ def load_pretrained(options):
     return model, tokenizer
 
 
-def create_model(pretrained_model, num_labels, output_index=0):
+def get_bert_output(model, layer_index, output_offset):
+    if layer_index == -1:
+        layer_output = model.output
+    else:
+        layer_name = 'Encoder-{}-FeedForward-Norm'.format(layer_index)
+        layer_output = model.get_layer(layer_name).output
+    return layer_output[:, output_offset]
+
+
+def is_signed_digit(s):
+    if type(s) == int:
+        return True
+    elif s.startswith('-'):
+        return s[1:].isdigit()
+    else:
+        return s.isdigit()
+
+
+def create_model(pretrained_model, num_labels, output_offset,
+                 layer_index):
     model_inputs = pretrained_model.inputs[:2]
-    bert_out = Lambda(lambda x: x[:, output_index])(pretrained_model.output)
+    if is_signed_digit(layer_index):
+        layer_index = int(layer_index)
+        pretrained_output = get_bert_output(pretrained_model, layer_index,
+                                            output_offset)
+    elif layer_index in ('avg', 'concat'):
+        outputs = []
+        for i in count(1):
+            try:
+                outputs.append(get_bert_output(pretrained_model, i,
+                                               output_offset))
+            except ValueError:
+                break    # assume past last layer
+        if layer_index == 'avg':
+            pretrained_output = Average()(outputs)
+        else:
+            assert layer_index == 'concat'
+            pretrained_output = Concatenate()(outputs)
+
     model_output = keras.layers.Dense(
         num_labels,
         activation='softmax'
-    )(bert_out)
+    )(pretrained_output)
     model = keras.models.Model(inputs=model_inputs, outputs=model_output)
     return model
 
