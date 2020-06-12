@@ -12,7 +12,7 @@ from itertools import count
 from functools import wraps
 from time import time
 from argparse import ArgumentParser
-from logging import warning
+from logging import info, warning
 
 from tensorflow import keras
 import bert_tokenization as tokenization
@@ -292,7 +292,7 @@ def encode_tokenized(tokenized_texts, tokenizer, seq_len, replace_span):
         tokens.extend(right)
         if len(tokens) >= seq_len-1:    # -1 for [SEP]
             tokens, chopped = tokens[:seq_len-1], tokens[seq_len-1:]
-            warning('chopping tokens to {}: {} ///// {}'.format(
+            info('chopping tokens to {}: {} ///// {}'.format(
                 seq_len-1, ' '.join(tokens), ' '.join(chopped)))
         tokens.append('[SEP]')
         tokens.extend(['[PAD]'] * (seq_len-len(tokens)))
@@ -334,10 +334,71 @@ def load_tsv_data(fn, options):
     return labels, texts
 
 
-@timed
-def load_dataset(fn, tokenizer, max_seq_len, replace_span, label_map, options):
-    labels, texts = load_tsv_data(fn, options)
+def encode_data(texts, labels, tokenizer, max_seq_len, replace_span, label_map,
+                options):
     tokenized = tokenize_texts(texts, tokenizer)
     x = encode_tokenized(tokenized, tokenizer, max_seq_len, replace_span)
     y = np.array([label_map[l] for l in labels])
     return x, y
+    
+
+@timed
+def load_dataset(fn, tokenizer, max_seq_len, replace_span, label_map, options):
+    labels, texts = load_tsv_data(fn, options)
+    return encode_data(texts, labels, tokenizer, max_seq_len, replace_span,
+                       label_map, options)
+
+
+@timed
+def load_batch_offsets(fn, batch_size):
+    offsets, offset = [], 0
+    with open(fn, 'rb') as f:
+        for ln, l in enumerate(f):
+            if ln % batch_size == 0:
+                offsets.append(offset)
+            offset += len(l)
+    return offsets, ln
+
+
+def load_batch_from_tsv(fn, base_ln, offset, batch_size, options,
+                        encoding='utf-8'):
+    labels, texts = [], []
+    with open(fn, 'rb') as f:
+        f.seek(offset)
+        for ln, l in enumerate(f):
+            if len(texts) >= batch_size:
+                break
+            l = l.decode(encoding)
+            label, text = parse_tsv_line(l, base_ln+ln, fn, options)
+            labels.append(label)
+            texts.append(text)
+    return labels, texts
+
+
+class TsvSequence(Sequence):
+    def __init__(self, data_path, tokenizer, label_map, options):
+        self._data_path = data_path
+        self._tokenizer = tokenizer
+        self._label_map = label_map
+        self._batch_size = options.batch_size
+        self._max_seq_len = options.max_seq_length
+        self._replace_span = options.replace_span
+        self._options = options
+        offsets, total = load_batch_offsets(data_path, options.batch_size)
+        self._batch_offsets = offsets
+        self.num_examples = total
+
+    def __len__(self):
+        return len(self._batch_offsets)
+
+    def __getitem__(self, idx):
+        base_ln = idx * self._options.batch_size
+        offset = self._batch_offsets[idx]
+        labels, texts = load_batch_from_tsv(self._data_path, base_ln, offset,
+                                            self._batch_size, self._options)
+        x, y = encode_data(texts, labels, self._tokenizer, self._max_seq_len, 
+                           self._replace_span, self._label_map, self._options)
+        return x, y
+
+    def __on_epoch_end__(self):
+        pass

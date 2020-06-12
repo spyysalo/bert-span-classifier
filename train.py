@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 from common import argument_parser
-from common import load_pretrained, load_labels, load_dataset
+from common import load_pretrained, load_labels, load_dataset, TsvSequence
 from common import tokenize_texts, encode_tokenized
 from common import create_model, create_optimizer, save_model
 
@@ -18,9 +18,11 @@ def main(argv):
     label_map = { l: i for i, l in enumerate(label_list) }
     inv_label_map = { v: k for k, v in label_map.items() }
 
-    train_x, train_y = load_dataset(args.train_data, tokenizer,
-                                    args.max_seq_length, args.replace_span,
-                                    label_map, args)
+    train_generator = TsvSequence(args.train_data, tokenizer, label_map, args)
+
+    # train_x, train_y = load_dataset(args.train_data, tokenizer,
+    #                                 args.max_seq_length, args.replace_span,
+    #                                 label_map, args)
 
     if args.dev_data is None:
         dev_x, dev_y = None, None
@@ -36,7 +38,8 @@ def main(argv):
                          args.output_layer)
     model.summary(print_fn=print)
 
-    optimizer = create_optimizer(len(train_x[0]), args)
+    #optimizer = create_optimizer(len(train_x[0]), args)
+    optimizer = create_optimizer(train_generator.num_examples, args)
     
     model.compile(
         optimizer,
@@ -45,11 +48,10 @@ def main(argv):
     )
 
     model.fit(
-        train_x,
-        train_y,
+        train_generator,
         epochs=args.num_train_epochs,
-        batch_size=args.batch_size,
-        validation_data=validation_data
+        validation_data=validation_data,
+        workers=10
     )
 
     if validation_data is not None:
