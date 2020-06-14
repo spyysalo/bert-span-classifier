@@ -5,7 +5,8 @@ import sys
 import numpy as np
 
 from common import argument_parser
-from common import load_pretrained, load_labels, load_dataset, TsvSequence
+from common import load_pretrained, load_labels, num_examples
+from common import load_dataset, load_tfrecords, TsvSequence
 from common import tokenize_texts, encode_tokenized
 from common import create_model, create_optimizer, save_model
 
@@ -18,11 +19,13 @@ def main(argv):
     label_map = { l: i for i, l in enumerate(label_list) }
     inv_label_map = { v: k for k, v in label_map.items() }
 
-    train_generator = TsvSequence(args.train_data, tokenizer, label_map, args)
-
-    # train_x, train_y = load_dataset(args.train_data, tokenizer,
-    #                                 args.max_seq_length, args.replace_span,
-    #                                 label_map, args)
+    if args.train_data.endswith('.tsv'):
+        train_data = TsvSequence(args.train_data, tokenizer, label_map, args)
+    elif args.train_data.endswith('.tfrecord'):
+        train_data = load_tfrecords(args.train_data, args.max_seq_length,
+                                    args.batch_size)
+    else:
+        raise ValueError('--train_data must be .tsv or .tfrecord')
 
     if args.dev_data is None:
         dev_x, dev_y = None, None
@@ -38,9 +41,8 @@ def main(argv):
                          args.output_layer)
     model.summary(print_fn=print)
 
-    #optimizer = create_optimizer(len(train_x[0]), args)
-    optimizer = create_optimizer(train_generator.num_examples, args)
-    
+    optimizer = create_optimizer(num_examples(args.train_data), args)
+
     model.compile(
         optimizer,
         loss='sparse_categorical_crossentropy',
@@ -48,7 +50,7 @@ def main(argv):
     )
 
     model.fit(
-        train_generator,
+        train_data,
         epochs=args.num_train_epochs,
         validation_data=validation_data,
         workers=10
