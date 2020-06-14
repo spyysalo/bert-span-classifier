@@ -5,6 +5,7 @@ import os
 import json
 
 import numpy as np
+import tensorflow as tf
 
 os.environ['TF_KERAS'] = '1'
 
@@ -340,7 +341,7 @@ def encode_data(texts, labels, tokenizer, max_seq_len, replace_span, label_map,
     x = encode_tokenized(tokenized, tokenizer, max_seq_len, replace_span)
     y = np.array([label_map[l] for l in labels])
     return x, y
-    
+
 
 @timed
 def load_dataset(fn, tokenizer, max_seq_len, replace_span, label_map, options):
@@ -375,6 +376,58 @@ def load_batch_from_tsv(fn, base_ln, offset, batch_size, options,
     return labels, texts
 
 
+def tsv_generator(data_path, tokenizer, label_map, options):
+    max_seq_len = options.max_seq_length
+    replace_span = options.replace_span
+    with open(data_path) as f:
+        for ln, l in enumerate(f, start=1):
+            label, text = parse_tsv_line(l, ln, data_path, options)
+            # TODO function to encode single example
+            (t, s), y = encode_data([text], [label], tokenizer, max_seq_len,
+                                    replace_span, label_map, options)
+            yield (t[0], s[0]), y[0]
+
+
+def num_tsv_examples(fn):
+    return sum(1 for _ in open(fn))
+
+
+def num_tfrecord_examples(fn):
+    return sum(1 for _ in tf.data.TFRecordDataset(fn))
+
+
+@timed
+def num_examples(fn):
+    if fn.endswith('.tsv'):
+        return num_tsv_examples(fn)
+    elif fn.endswith('.tfrecord'):
+        return num_tfrecord_examples(fn)
+    else:
+        raise ValueError('file {} must be .tsv or .tfrecord'.format(fn))
+
+
+def load_tfrecords(fn, max_seq_len=DEFAULT_SEQ_LEN,
+                   batch_size=DEFAULT_BATCH_SIZE):
+    # TODO support multiple TFRecords
+    dataset = tf.data.TFRecordDataset(fn)
+    dataset = dataset.map(decode_tfrecord)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(1)    # TODO optimize
+    return dataset
+
+
+def decode_tfrecord(record, max_seq_len=DEFAULT_SEQ_LEN):
+    name_to_features = {
+        'Input-Token': tf.io.FixedLenFeature([max_seq_len], tf.int64),
+        'Input-Segment': tf.io.FixedLenFeature([max_seq_len], tf.int64),
+        'label': tf.io.FixedLenFeature([1], tf.int64),
+    }
+    example = tf.io.parse_single_example(record, name_to_features)
+    x = (example['Input-Token'], example['Input-Segment'])
+    y = example['label']
+    return x, y
+
+
 class TsvSequence(Sequence):
     def __init__(self, data_path, tokenizer, label_map, options):
         self._data_path = data_path
@@ -396,7 +449,7 @@ class TsvSequence(Sequence):
         offset = self._batch_offsets[idx]
         labels, texts = load_batch_from_tsv(self._data_path, base_ln, offset,
                                             self._batch_size, self._options)
-        x, y = encode_data(texts, labels, self._tokenizer, self._max_seq_len, 
+        x, y = encode_data(texts, labels, self._tokenizer, self._max_seq_len,
                            self._replace_span, self._label_map, self._options)
         return x, y
 
