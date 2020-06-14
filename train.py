@@ -21,9 +21,11 @@ def main(argv):
 
     if args.train_data.endswith('.tsv'):
         train_data = TsvSequence(args.train_data, tokenizer, label_map, args)
+        input_format = 'tsv'
     elif args.train_data.endswith('.tfrecord'):
         train_data = load_tfrecords(args.train_data, args.max_seq_length,
                                     args.batch_size)
+        input_format = 'tfrecord'
     else:
         raise ValueError('--train_data must be .tsv or .tfrecord')
 
@@ -49,13 +51,22 @@ def main(argv):
         metrics=['sparse_categorical_accuracy']
     )
 
-    model.fit(
-        train_data,
-        epochs=args.num_train_epochs,
-        validation_data=validation_data,
-        workers=10
-    )
-
+    if input_format == 'tsv':
+        model.fit(
+            train_data,
+            epochs=args.num_train_epochs,
+            validation_data=validation_data,
+            workers=10    # TODO
+        )
+    elif input_format == 'tfrecord':
+        # TODO reintroduce validation_data
+        model.fit(
+            train_data,
+            epochs=args.num_train_epochs
+        )
+    else:
+        assert False, 'internal error'
+        
     if validation_data is not None:
         probs = model.predict(dev_x, batch_size=args.batch_size)
         preds = np.argmax(probs, axis=-1)

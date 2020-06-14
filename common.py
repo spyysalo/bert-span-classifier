@@ -410,7 +410,7 @@ def load_tfrecords(fn, max_seq_len=DEFAULT_SEQ_LEN,
                    batch_size=DEFAULT_BATCH_SIZE):
     # TODO support multiple TFRecords
     dataset = tf.data.TFRecordDataset(fn)
-    dataset = dataset.map(decode_tfrecord)
+    dataset = dataset.map(decode_tfrecord, num_parallel_calls=10)    # TODO
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(1)    # TODO optimize
     return dataset

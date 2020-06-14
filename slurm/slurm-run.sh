@@ -65,6 +65,13 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 echo "START $SLURM_JOBID: $(date)"
 
+if [ -e "$DATA_DIR/train.tfrecord" ]; then
+    train_data="$DATA_DIR/train.tfrecord"
+else
+    train_data="$DATA_DIR/train.tsv"
+fi
+echo "Using $DATA_DIR/train.tfrecord as training data" >&2
+
 srun python3 train.py \
     --replace_span "[unused1]" \
     --bert_config_file "$CONFIG" \
@@ -74,7 +81,7 @@ srun python3 train.py \
     --max_seq_length $MAX_SEQ_LENGTH \
     --batch_size $BATCH_SIZE \
     --num_train_epochs $EPOCHS \
-    --train_data "$DATA_DIR/train.tsv" \
+    --train_data "$train_data" \
     --dev_data "$DATA_DIR/dev.tsv" \
     --labels "$DATA_DIR/labels.txt" \
     $caseparam \

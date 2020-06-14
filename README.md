@@ -24,6 +24,18 @@ python train.py \
     --labels example-data/labels.txt
 ```
 
+## Creating TFRecords
+
+(Make sure the venv is activated.)
+
+```
+python create_tfrecords.py \
+    --vocab_file models/cased_L-12_H-768_A-12/vocab.txt \
+    --input_file example-data/train.tsv \
+    --output_file example-data/train.tfrecord \
+    --labels example-data/labels.txt
+```
+
 ## On slurm
 
 First edit `slurm/slurm-run-test.sh` to match your setup (partition etc.)
