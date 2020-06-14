@@ -41,5 +41,5 @@ python create_tfrecords.py \
 First edit `slurm/slurm-run-test.sh` to match your setup (partition etc.)
 
 ```
-sbatch slurm/slurm-run-test.sh models/cased_L-12_H-768_A-12/bert_model.ckpt example-data 64 16 3e-5 2
+sbatch slurm/slurm-run-test.sh models/cased_L-12_H-768_A-12/bert_model.ckpt example-data 128 16 3e-5 2
 ```
