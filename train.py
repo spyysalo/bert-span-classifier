@@ -43,7 +43,9 @@ def main(argv):
                          args.output_layer)
     model.summary(print_fn=print)
 
-    optimizer = create_optimizer(num_examples(args.train_data), args)
+    num_train_examples = num_examples(args.train_data)
+    print('num_train_examples: {}'.format(num_train_examples), file=sys.stderr)
+    optimizer = create_optimizer(num_train_examples, args)
 
     model.compile(
         optimizer,
@@ -60,9 +62,11 @@ def main(argv):
         )
     elif input_format == 'tfrecord':
         # TODO reintroduce validation_data
+        steps_per_epoch = int(np.ceil(num_train_examples/args.batch_size))
         model.fit(
             train_data,
-            epochs=args.num_train_epochs
+            epochs=args.num_train_epochs,
+            steps_per_epoch=steps_per_epoch
         )
     else:
         assert False, 'internal error'

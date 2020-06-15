@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from argparse import ArgumentParser
 
-from common import decode_tfrecord
+from common import get_decode_function
 
 
 def argparser():
@@ -22,8 +22,9 @@ def list_tfrecord(fn, options):
     # deprecated
     # for example in tf.compat.v1.io.tf_record_iterator(fn):
     #     print(tf.train.Example.FromString(example))
+    decode = get_decode_function(None)
     dataset = tf.data.TFRecordDataset(fn)
-    dataset = dataset.map(decode_tfrecord)
+    dataset = dataset.map(decode)
     for example in iter(dataset):
         print(example)
 

@@ -406,26 +406,30 @@ def num_examples(fn):
         raise ValueError('file {} must be .tsv or .tfrecord'.format(fn))
 
 
-def load_tfrecords(fn, max_seq_len=DEFAULT_SEQ_LEN,
-                   batch_size=DEFAULT_BATCH_SIZE):
-    # TODO support multiple TFRecords
-    dataset = tf.data.TFRecordDataset(fn)
-    dataset = dataset.map(decode_tfrecord, num_parallel_calls=10)    # TODO
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(1)    # TODO optimize
-    return dataset
-
-
-def decode_tfrecord(record, max_seq_len=DEFAULT_SEQ_LEN):
+def get_decode_function(max_seq_len):
     name_to_features = {
         'Input-Token': tf.io.FixedLenFeature([max_seq_len], tf.int64),
         'Input-Segment': tf.io.FixedLenFeature([max_seq_len], tf.int64),
         'label': tf.io.FixedLenFeature([1], tf.int64),
     }
-    example = tf.io.parse_single_example(record, name_to_features)
-    x = (example['Input-Token'], example['Input-Segment'])
-    y = example['label']
-    return x, y
+    def decode_tfrecord(record):
+        example = tf.io.parse_single_example(record, name_to_features)
+        x = (example['Input-Token'], example['Input-Segment'])
+        y = example['label']
+        return x, y
+    return decode_tfrecord
+    
+
+def load_tfrecords(fn, max_seq_len=DEFAULT_SEQ_LEN,
+                   batch_size=DEFAULT_BATCH_SIZE):
+    decode = get_decode_function(max_seq_len)
+    # TODO support multiple TFRecords
+    dataset = tf.data.TFRecordDataset(fn)
+    dataset = dataset.map(decode, num_parallel_calls=10)    # TODO
+    dataset = dataset.repeat()
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(1)    # TODO optimize
+    return dataset
 
 
 class TsvSequence(Sequence):
