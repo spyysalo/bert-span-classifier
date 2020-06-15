@@ -39,7 +39,7 @@ def list_tfrecord(fn, options):
         for key, value in sorted(edict.items()):
             # NOTE: assumes int64
             npvalue = np.array(value.int64_list.value)
-            if vocab_map is None or key == 'label':
+            if vocab_map is None or key != 'Input-Token':
                 print('{} {}:\n{}'.format(key, npvalue.shape, npvalue))
             else:
                 tokens = [vocab_map[i] for i in npvalue]
