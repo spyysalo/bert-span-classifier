@@ -70,7 +70,7 @@ if [ -e "$DATA_DIR/train.tfrecord" ]; then
 else
     train_data="$DATA_DIR/train.tsv"
 fi
-echo "Using $DATA_DIR/train.tfrecord as training data" >&2
+echo "Using $train_data as training data" >&2
 
 srun python3 train.py \
     --replace_span "[unused1]" \
