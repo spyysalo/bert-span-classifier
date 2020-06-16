@@ -42,6 +42,8 @@ python -m pip install tensorflow==2.2
 python -m pip install -r requirements.txt
 ```
 
+(Use `slurm/slurm-run-test-tf22.sh.sh` or similar with TF 2.2)
+
 ## Creating TFRecords
 
 (Make sure the venv is activated.)
