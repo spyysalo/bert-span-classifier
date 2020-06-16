@@ -51,7 +51,8 @@ python create_tfrecords.py \
     --vocab_file models/cased_L-12_H-768_A-12/vocab.txt \
     --input_file example-data/train.tsv \
     --output_file example-data/train.tfrecord \
-    --labels example-data/labels.txt
+    --labels example-data/labels.txt \
+    --max_seq_length 32
 ```
 
 ## On slurm
@@ -59,5 +60,5 @@ python create_tfrecords.py \
 First edit `slurm/slurm-run-test.sh` to match your setup (partition etc.)
 
 ```
-sbatch slurm/slurm-run-test.sh models/cased_L-12_H-768_A-12/bert_model.ckpt example-data 128 16 3e-5 2
+sbatch slurm/slurm-run-test.sh models/cased_L-12_H-768_A-12/bert_model.ckpt example-data 32 16 3e-5 2
 ```
