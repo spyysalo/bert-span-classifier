@@ -255,6 +255,8 @@ def create_optimizer(num_example, options):
         epochs=options.num_train_epochs,
         warmup_proportion=options.warmup_proportion,
     )
+    print('optimizer total_steps: {}, warmup_steps: {}'.format(
+        total_steps, warmup_steps), file=sys.stderr)
     optimizer = AdamWarmup(
         total_steps,
         warmup_steps,
