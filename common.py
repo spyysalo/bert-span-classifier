@@ -421,8 +421,10 @@ def get_decode_function(max_seq_len):
     }
     def decode_tfrecord(record):
         example = tf.io.parse_single_example(record, name_to_features)
-        x = (example['Input-Token'], example['Input-Segment'])
-        y = example['label']
+        t = tf.cast(example['Input-Token'], tf.int32)
+        s = tf.cast(example['Input-Segment'], tf.int32)
+        y = tf.cast(example['label'], tf.int32)
+        x = (t, s)
         return x, y
     return decode_tfrecord
     
