@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from common import argument_parser
+from common import argument_parser, print_versions
 from common import load_pretrained, load_labels, num_examples
 from common import load_dataset, load_tfrecords, TsvSequence
 from common import tokenize_texts, encode_tokenized
@@ -12,6 +12,7 @@ from common import create_model, create_optimizer, save_model
 
 
 def main(argv):
+    print_versions()
     args = argument_parser('train').parse_args(argv[1:])
     pretrained_model, tokenizer = load_pretrained(args)
 

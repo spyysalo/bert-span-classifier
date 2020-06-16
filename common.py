@@ -28,6 +28,11 @@ from config import DEFAULT_SEQ_LEN, DEFAULT_BATCH_SIZE, DEFAULT_EPOCHS
 from config import DEFAULT_LR, DEFAULT_WARMUP_PROPORTION
 
 
+def print_versions(out=sys.stderr):
+    print('Using tensorflow {}'.format(tf.__version__), file=sys.stderr)
+    print('Using keras {}'.format(keras.__version__), file=sys.stderr)
+
+
 def timed(f, out=sys.stderr):
     @wraps(f)
     def wrapper(*args, **kwargs):
