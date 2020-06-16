@@ -50,6 +50,7 @@ python -m pip install -r requirements.txt
 
 ```
 python create_tfrecords.py \
+    --replace_span "[unused1]" \
     --vocab_file models/cased_L-12_H-768_A-12/vocab.txt \
     --input_file example-data/train.tsv \
     --output_file example-data/train.tfrecord \
