@@ -429,8 +429,7 @@ def get_decode_function(max_seq_len):
     return decode_tfrecord
     
 
-def load_tfrecords(fn, max_seq_len=DEFAULT_SEQ_LEN,
-                   batch_size=DEFAULT_BATCH_SIZE):
+def load_tfrecords(fn, max_seq_len, batch_size):
     decode = get_decode_function(max_seq_len)
     # TODO support multiple TFRecords
     dataset = tf.data.TFRecordDataset(fn)
