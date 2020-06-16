@@ -51,6 +51,10 @@ def argparser():
         '--text_fields', type=int, default=-3,
         help='Index of first text field in TSV data (1-based)'
     )
+    ap.add_argument(
+        '--max_examples', type=int, default=None,
+        help='Maximum number of examples to generate'
+    )
     return ap
 
 
@@ -104,6 +108,8 @@ def main(argv):
     examples = []
     for x, y in tsv_generator(args.input_file, tokenizer, label_map, args):
         examples.append(Example(x, y))
+        if args.max_examples and len(examples) >= args.max_examples:
+            break
 
     write_examples(examples, args.output_file)
 
