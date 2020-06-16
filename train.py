@@ -4,8 +4,11 @@ import sys
 
 import numpy as np
 
+from tensorflow.distribute import MirroredStrategy
+from logging import warning
+
 from common import argument_parser, print_versions
-from common import load_pretrained, load_labels, num_examples
+from common import load_pretrained, get_tokenizer, load_labels, num_examples
 from common import load_dataset, load_tfrecords, TsvSequence
 from common import tokenize_texts, encode_tokenized
 from common import create_model, create_optimizer, save_model
@@ -14,18 +17,25 @@ from common import create_model, create_optimizer, save_model
 def main(argv):
     print_versions()
     args = argument_parser('train').parse_args(argv[1:])
-    pretrained_model, tokenizer = load_pretrained(args)
+
+    strategy = MirroredStrategy()
+    num_devices = strategy.num_replicas_in_sync
+    # Batch datasets with global batch size (local * GPUs)
+    global_batch_size = args.batch_size * num_devices
+
+    tokenizer = get_tokenizer(args)
 
     label_list = load_labels(args.labels)
     label_map = { l: i for i, l in enumerate(label_list) }
     inv_label_map = { v: k for k, v in label_map.items() }
 
     if args.train_data.endswith('.tsv'):
-        train_data = TsvSequence(args.train_data, tokenizer, label_map, args)
+        train_data = TsvSequence(args.train_data, tokenizer, label_map,
+                                 global_batch_size, args)
         input_format = 'tsv'
     elif args.train_data.endswith('.tfrecord'):
         train_data = load_tfrecords(args.train_data, args.max_seq_length,
-                                    args.batch_size)
+                                    global_batch_size)
         input_format = 'tfrecord'
     else:
         raise ValueError('--train_data must be .tsv or .tfrecord')
@@ -39,20 +49,29 @@ def main(argv):
                                     label_map, args)
         validation_data = (dev_x, dev_y)
 
-    output_offset = int(args.max_seq_length/2)
-    model = create_model(pretrained_model, len(label_list), output_offset,
-                         args.output_layer)
-    model.summary(print_fn=print)
+    print('Number of devices: {}'.format(num_devices), file=sys.stderr)
+    if num_devices > 1 and input_format != 'tfrecord':
+        warning('TFRecord input recommended for multi-device training')
 
-    num_train_examples = num_examples(args.train_data)
-    print('num_train_examples: {}'.format(num_train_examples), file=sys.stderr)
-    optimizer = create_optimizer(num_train_examples, args)
+    with strategy.scope():
+        pretrained_model = load_pretrained(args)
 
-    model.compile(
-        optimizer,
-        loss='sparse_categorical_crossentropy',
-        metrics=['sparse_categorical_accuracy']
-    )
+        output_offset = int(args.max_seq_length/2)
+        model = create_model(pretrained_model, len(label_list), output_offset,
+                             args.output_layer)
+        model.summary(print_fn=print)
+
+        num_train_examples = num_examples(args.train_data)
+        print('num_train_examples: {}'.format(num_train_examples),
+              file=sys.stderr)
+        optimizer = create_optimizer(num_train_examples, global_batch_size,
+                                     args)
+
+        model.compile(
+            optimizer,
+            loss='sparse_categorical_crossentropy',
+            metrics=['sparse_categorical_accuracy']
+        )
 
     if input_format == 'tsv':
         model.fit(
@@ -64,9 +83,9 @@ def main(argv):
     elif input_format == 'tfrecord':
         # TODO reintroduce validation_data. Adding
         #     validation_data=validation_data,
-        #     validation_batch_size=args.batch_size,
+        #     validation_batch_size=global_batch_size,
         # to the model.fit call works, but requires TF 2.2
-        steps_per_epoch = int(np.ceil(num_train_examples/args.batch_size))
+        steps_per_epoch = int(np.ceil(num_train_examples/global_batch_size))
         model.fit(
             train_data,
             epochs=args.num_train_epochs,
@@ -76,7 +95,7 @@ def main(argv):
         assert False, 'internal error'
         
     if validation_data is not None:
-        probs = model.predict(dev_x, batch_size=args.batch_size)
+        probs = model.predict(dev_x, batch_size=global_batch_size)
         preds = np.argmax(probs, axis=-1)
         correct, total = sum(g==p for g, p in zip(dev_y, preds)), len(dev_y)
         print('Final dev accuracy: {:.1%} ({}/{})'.format(

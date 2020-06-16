@@ -38,8 +38,8 @@ def timed(f, out=sys.stderr):
     def wrapper(*args, **kwargs):
         start = time()
         result = f(*args, **kwargs)
-        print('{} completed in {:.1f} sec'.format(f.__name__, time()-start),
-              file=out)
+        print('@timed: {} completed in {:.1f} sec'.format(
+            f.__name__, time()-start), file=out)
         return result
     return wrapper
 
@@ -139,11 +139,15 @@ def load_pretrained(options):
         trainable=True,
         seq_len=options.max_seq_length,
     )
+    return model
+
+
+def get_tokenizer(options):
     tokenizer = tokenization.FullTokenizer(
         vocab_file=options.vocab_file,
         do_lower_case=options.do_lower_case
     )
-    return model, tokenizer
+    return tokenizer
 
 
 def get_bert_output(model, layer_index, output_offset):
@@ -253,10 +257,10 @@ def load_labels(path):
     return labels
 
 
-def create_optimizer(num_example, options):
+def create_optimizer(num_example, batch_size, options):
     total_steps, warmup_steps = calc_train_steps(
         num_example=num_example,
-        batch_size=options.batch_size,
+        batch_size=batch_size,
         epochs=options.num_train_epochs,
         warmup_proportion=options.warmup_proportion,
     )
@@ -441,15 +445,15 @@ def load_tfrecords(fn, max_seq_len, batch_size):
 
 
 class TsvSequence(Sequence):
-    def __init__(self, data_path, tokenizer, label_map, options):
+    def __init__(self, data_path, tokenizer, label_map, batch_size, options):
         self._data_path = data_path
         self._tokenizer = tokenizer
         self._label_map = label_map
-        self._batch_size = options.batch_size
+        self._batch_size = batch_size
         self._max_seq_len = options.max_seq_length
         self._replace_span = options.replace_span
         self._options = options
-        offsets, total = load_batch_offsets(data_path, options.batch_size)
+        offsets, total = load_batch_offsets(data_path, batch_size)
         self._batch_offsets = offsets
         self.num_examples = total
 
@@ -457,7 +461,7 @@ class TsvSequence(Sequence):
         return len(self._batch_offsets)
 
     def __getitem__(self, idx):
-        base_ln = idx * self._options.batch_size
+        base_ln = idx * self._batch_size
         offset = self._batch_offsets[idx]
         labels, texts = load_batch_from_tsv(self._data_path, base_ln, offset,
                                             self._batch_size, self._options)
