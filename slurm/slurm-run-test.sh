@@ -2,7 +2,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem=4G
+#SBATCH --mem=8G
 #SBATCH -p gputest
 #SBATCH -t 00:15:00
 #SBATCH --gres=gpu:v100:1
