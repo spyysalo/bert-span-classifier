@@ -1,4 +1,4 @@
-tensorflow
+tensorflow==2.2
 keras-bert
 flask
 flask-cors

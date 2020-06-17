@@ -58,7 +58,10 @@ ln -s logs/$SLURM_JOBID.out latest.out
 ln -s logs/$SLURM_JOBID.err latest.err
 
 module purge
-module load tensorflow/2.0.0
+module load gcc/8.3.0
+module load cuda
+module load cudnn
+
 source venv/bin/activate
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK

@@ -1,4 +1,4 @@
-# bert-span-classifier
+# BERT span classifier
 
 Text span classifier using BERT
 
@@ -10,7 +10,10 @@ cd bert-span-classifier/
 
 ./scripts/get-models.sh
 
-module load tensorflow/2.0.0    # for Slurm, replace with equivalent
+module purge
+module load gcc/8.3.0
+module load cuda
+module load cudnn
 
 python3 -m venv venv
 source venv/bin/activate
@@ -25,24 +28,6 @@ python train.py \
     --train_data example-data/train.tsv --dev_data example-data/dev.tsv \
     --labels example-data/labels.txt
 ```
-
-## Alternatively, for TF 2.2 on puhti
-
-```
-module purge
-module load gcc/8.3.0
-module load cuda
-module load cudnn
-
-python3 -m venv venv
-source venv/bin/activate
-
-python -m pip install --upgrade pip
-python -m pip install tensorflow==2.2
-python -m pip install -r requirements.txt
-```
-
-(Use `slurm/slurm-run-test-tf22.sh.sh` or similar with TF 2.2)
 
 ## Creating TFRecords
 
