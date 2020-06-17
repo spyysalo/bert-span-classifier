@@ -99,6 +99,14 @@ def argument_parser(mode):
             '--replace_span', default=None,
             help='Replace span text with given special token'
         )
+        argparser.add_argument(
+            '--checkpoint_dir', default='checkpoints',
+            help='Directory for model checkpoints'
+        )
+        argparser.add_argument(
+            '--checkpoint_steps', type=int, default=None,
+            help='How often to save model checkpoints'
+        )
     argparser.add_argument(
         '--label_field', type=int, default=-4,
         help='Index of label in TSV data (1-based)'
@@ -213,7 +221,8 @@ def _config_path(model_dir):
     return os.path.join(model_dir, 'config.json')
 
 
-def save_model(model, tokenizer, labels, options):
+def save_model_etc(model, tokenizer, labels, options):
+    # TODO rename
     os.makedirs(options.model_dir, exist_ok=True)
     config = {
         'do_lower_case': options.do_lower_case,
@@ -231,13 +240,17 @@ def save_model(model, tokenizer, labels, options):
             print(v, file=out)
 
 
-def load_model(model_dir):
-    with open(_config_path(model_dir)) as f:
-        config = json.load(f)
-    model = keras.models.load_model(
-        _model_path(model_dir),
+def load_model(model_path):
+    return keras.models.load_model(
+        model_path,
         custom_objects=get_custom_objects()
     )
+
+
+def load_model_etc(model_dir):
+    with open(_config_path(model_dir)) as f:
+        config = json.load(f)
+    model = load_model(_model_path(model_dir))
     tokenizer = tokenization.FullTokenizer(
         vocab_file=_vocab_path(model_dir),
         do_lower_case=config['do_lower_case']

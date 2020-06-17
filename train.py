@@ -1,22 +1,46 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 
 import numpy as np
 
-from tensorflow.distribute import MirroredStrategy
 from logging import warning
 
+from tensorflow.distribute import MirroredStrategy
+from tensorflow.keras.callbacks import ModelCheckpoint
+
 from common import argument_parser, print_versions
-from common import load_pretrained, get_tokenizer, load_labels, num_examples
-from common import load_dataset, load_tfrecords, TsvSequence
+from common import load_pretrained, load_model, get_tokenizer, load_labels
+from common import load_dataset, load_tfrecords, TsvSequence, num_examples
 from common import tokenize_texts, encode_tokenized
-from common import create_model, create_optimizer, save_model
+from common import create_model, create_optimizer, save_model_etc
+
+
+def restore_or_create_model(label_num, options):
+    checkpoints = [
+        os.path.join(options.checkpoint_dir, fn)
+        for fn in os.listdir(options.checkpoint_dir)
+    ]
+    if checkpoints:
+        latest_checkpoint = max(checkpoints, key=os.path.getctime)
+        print('Loading checkpoint from', latest_checkpoint, file=sys.stderr)
+        return load_model(latest_checkpoint)
+    else:
+        print('Creating new model', file=sys.stderr)
+        pretrained_model = load_pretrained(options)
+        output_offset = int(options.max_seq_length/2)
+        model = create_model(pretrained_model, label_num, output_offset,
+                             options.output_layer)
+        return model
 
 
 def main(argv):
     print_versions()
     args = argument_parser('train').parse_args(argv[1:])
+
+    if args.checkpoint_steps is not None:
+        os.makedirs(args.checkpoint_dir, exist_ok=True)
 
     strategy = MirroredStrategy()
     num_devices = strategy.num_replicas_in_sync
@@ -54,11 +78,7 @@ def main(argv):
         warning('TFRecord input recommended for multi-device training')
 
     with strategy.scope():
-        pretrained_model = load_pretrained(args)
-
-        output_offset = int(args.max_seq_length/2)
-        model = create_model(pretrained_model, len(label_list), output_offset,
-                             args.output_layer)
+        model = restore_or_create_model(len(label_list), args)
         model.summary(print_fn=print)
 
         num_train_examples = num_examples(args.train_data)
@@ -72,6 +92,13 @@ def main(argv):
             loss='sparse_categorical_crossentropy',
             metrics=['sparse_categorical_accuracy']
         )
+
+    callbacks = []
+    if args.checkpoint_steps is not None:
+        callbacks.append(ModelCheckpoint(
+            filepath=os.path.join(args.checkpoint_dir, 'ckpt-{epoch}.h5'),
+            save_freq=args.checkpoint_steps
+        ))
 
     if input_format == 'tsv':
         other_args = {
@@ -87,6 +114,7 @@ def main(argv):
     model.fit(
         train_data,
         epochs=args.num_train_epochs,
+        callbacks=callbacks,
         validation_data=validation_data,
         validation_batch_size=global_batch_size,
         **other_args
@@ -101,7 +129,7 @@ def main(argv):
 
     if args.model_dir is not None:
         print('Saving model in {}'.format(args.model_dir))
-        save_model(model, tokenizer, label_list, args)
+        save_model_etc(model, tokenizer, label_list, args)
     
     return 0
 

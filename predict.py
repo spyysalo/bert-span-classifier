@@ -4,14 +4,14 @@ import sys
 import numpy as np
 
 from common import argument_parser
-from common import load_model, load_tsv_data
+from common import load_model_etc, load_tsv_data
 from common import tokenize_texts, encode_tokenized
 
 
 def main(argv):
     args = argument_parser('predict').parse_args(argv[1:])
 
-    model, tokenizer, labels, config = load_model(args.model_dir)
+    model, tokenizer, labels, config = load_model_etc(args.model_dir)
     _, test_texts = load_tsv_data(args.test_data, args)
 
     max_seq_len = config['max_seq_length']
