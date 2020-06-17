@@ -58,6 +58,10 @@ python create_tfrecords.py \
     --max_seq_length 32
 ```
 
+**NOTE**: the scripts in the `slurm/` directory check if a
+`train.tfrecord` file exists, and will provide it rather than
+`train.tsv` to `train.py` if yes.
+
 ## On slurm
 
 First edit `slurm/slurm-run-test.sh` to match your setup (partition etc.)
