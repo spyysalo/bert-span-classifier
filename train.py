@@ -81,14 +81,12 @@ def main(argv):
             workers=10    # TODO
         )
     elif input_format == 'tfrecord':
-        # TODO reintroduce validation_data. Adding
-        #     validation_data=validation_data,
-        #     validation_batch_size=global_batch_size,
-        # to the model.fit call works, but requires TF 2.2
         steps_per_epoch = int(np.ceil(num_train_examples/global_batch_size))
         model.fit(
             train_data,
             epochs=args.num_train_epochs,
+            validation_data=validation_data,
+            validation_batch_size=global_batch_size,
             steps_per_epoch=steps_per_epoch
         )
     else:
