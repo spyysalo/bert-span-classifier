@@ -74,24 +74,24 @@ def main(argv):
         )
 
     if input_format == 'tsv':
-        model.fit(
-            train_data,
-            epochs=args.num_train_epochs,
-            validation_data=validation_data,
-            workers=10    # TODO
-        )
-    elif input_format == 'tfrecord':
-        steps_per_epoch = int(np.ceil(num_train_examples/global_batch_size))
-        model.fit(
-            train_data,
-            epochs=args.num_train_epochs,
-            validation_data=validation_data,
-            validation_batch_size=global_batch_size,
-            steps_per_epoch=steps_per_epoch
-        )
+        other_args = {
+            'workers': 10,    # TODO
+        }
     else:
-        assert False, 'internal error'
-        
+        assert input_format == 'tfrecord', 'internal error'
+        steps_per_epoch = int(np.ceil(num_train_examples/global_batch_size))
+        other_args = {
+            'steps_per_epoch': steps_per_epoch
+        }
+
+    model.fit(
+        train_data,
+        epochs=args.num_train_epochs,
+        validation_data=validation_data,
+        validation_batch_size=global_batch_size,
+        **other_args
+    )
+
     if validation_data is not None:
         probs = model.predict(dev_x, batch_size=global_batch_size)
         preds = np.argmax(probs, axis=-1)
