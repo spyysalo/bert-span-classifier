@@ -17,21 +17,30 @@ from common import tokenize_texts, encode_tokenized
 from common import create_model, create_optimizer, save_model_etc
 
 
-def restore_or_create_model(label_num, options):
+def restore_or_create_model(num_train_examples, num_labels, global_batch_size,
+                            options):
     checkpoints = [
         os.path.join(options.checkpoint_dir, fn)
         for fn in os.listdir(options.checkpoint_dir)
     ]
     if checkpoints:
         latest_checkpoint = max(checkpoints, key=os.path.getctime)
-        print('Loading checkpoint from', latest_checkpoint, file=sys.stderr)
+        print('Loading checkpoint from', latest_checkpoint, file=sys.stderr,
+              flush=True)
         return load_model(latest_checkpoint)
     else:
-        print('Creating new model', file=sys.stderr)
+        print('Creating new model', file=sys.stderr, flush=True)
         pretrained_model = load_pretrained(options)
         output_offset = int(options.max_seq_length/2)
-        model = create_model(pretrained_model, label_num, output_offset,
+        model = create_model(pretrained_model, num_labels, output_offset,
                              options.output_layer)
+        optimizer = create_optimizer(num_train_examples, global_batch_size,
+                                     options)
+        model.compile(
+            optimizer,
+            loss='sparse_categorical_crossentropy',
+            metrics=['sparse_categorical_accuracy']
+        )
         return model
 
 
@@ -73,25 +82,20 @@ def main(argv):
                                     label_map, args)
         validation_data = (dev_x, dev_y)
 
-    print('Number of devices: {}'.format(num_devices), file=sys.stderr)
+    print('Number of devices: {}'.format(num_devices), file=sys.stderr, 
+          flush=True)
     if num_devices > 1 and input_format != 'tfrecord':
         warning('TFRecord input recommended for multi-device training')
 
+    num_train_examples = num_examples(args.train_data)
+    num_labels = len(label_list)
+    print('num_train_examples: {}'.format(num_train_examples),
+          file=sys.stderr, flush=True)
+
     with strategy.scope():
-        model = restore_or_create_model(len(label_list), args)
-        model.summary(print_fn=print)
-
-        num_train_examples = num_examples(args.train_data)
-        print('num_train_examples: {}'.format(num_train_examples),
-              file=sys.stderr)
-        optimizer = create_optimizer(num_train_examples, global_batch_size,
-                                     args)
-
-        model.compile(
-            optimizer,
-            loss='sparse_categorical_crossentropy',
-            metrics=['sparse_categorical_accuracy']
-        )
+        model = restore_or_create_model(num_train_examples, num_labels, 
+                                        global_batch_size, args)
+    model.summary(print_fn=print)
 
     callbacks = []
     if args.checkpoint_steps is not None:
