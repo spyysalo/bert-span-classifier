@@ -12,9 +12,11 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 
 from common import argument_parser, print_versions
 from common import load_pretrained, load_model, get_tokenizer, load_labels
-from common import load_dataset, load_tfrecords, TsvSequence, num_examples
-from common import tokenize_texts, encode_tokenized
+from common import load_dataset, train_tfrecord_input, TsvSequence
+from common import tokenize_texts, encode_tokenized, num_examples
 from common import create_model, create_optimizer, save_model_etc
+
+from config import CHECKPOINT_PATH
 
 
 def restore_or_create_model(num_train_examples, num_labels, global_batch_size,
@@ -48,6 +50,7 @@ def main(argv):
     print_versions()
     args = argument_parser('train').parse_args(argv[1:])
 
+    args.train_data = args.train_data.split(',')
     if args.checkpoint_steps is not None:
         os.makedirs(args.checkpoint_dir, exist_ok=True)
 
@@ -62,13 +65,15 @@ def main(argv):
     label_map = { l: i for i, l in enumerate(label_list) }
     inv_label_map = { v: k for k, v in label_map.items() }
 
-    if args.train_data.endswith('.tsv'):
-        train_data = TsvSequence(args.train_data, tokenizer, label_map,
+    if args.train_data[0].endswith('.tsv'):
+        if len(args.train_data) > 1:
+            raise NotImplementedError('Multiple TSV inputs')
+        train_data = TsvSequence(args.train_data[0], tokenizer, label_map,
                                  global_batch_size, args)
         input_format = 'tsv'
-    elif args.train_data.endswith('.tfrecord'):
-        train_data = load_tfrecords(args.train_data, args.max_seq_length,
-                                    global_batch_size)
+    elif args.train_data[0].endswith('.tfrecord'):
+        train_data = train_tfrecord_input(args.train_data, args.max_seq_length,
+                                          global_batch_size)
         input_format = 'tfrecord'
     else:
         raise ValueError('--train_data must be .tsv or .tfrecord')
@@ -100,7 +105,7 @@ def main(argv):
     callbacks = []
     if args.checkpoint_steps is not None:
         callbacks.append(ModelCheckpoint(
-            filepath=os.path.join(args.checkpoint_dir, 'ckpt-{epoch}.h5'),
+            filepath=os.path.join(args.checkpoint_dir, CHECKPOINT_PATH),
             save_freq=args.checkpoint_steps
         ))
 

@@ -68,10 +68,11 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 echo "START $SLURM_JOBID: $(date)"
 
-if [ -e "$DATA_DIR/train.tfrecord" ]; then
-    train_data="$DATA_DIR/train.tfrecord"
+# https://stackoverflow.com/a/34195247
+if compgen -G "$DATA_DIR/train*.tfrecord" >/dev/null; then
+    train_data=$(ls split-tfrecords/train*.tfrecord | tr '\n' ',' | perl -pe 's/,$//')
 else
-    train_data="$DATA_DIR/train.tsv"
+    train_data=$(ls split-tfrecords/train*.tsv | tr '\n' ',' | perl -pe 's/,$//')
 fi
 echo "Using $train_data as training data" >&2
 

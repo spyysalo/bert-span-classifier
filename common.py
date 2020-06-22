@@ -422,7 +422,9 @@ def num_tfrecord_examples(fn):
 
 @timed
 def num_examples(fn):
-    if fn.endswith('.tsv'):
+    if isinstance(fn, list):
+        return sum(num_examples(f) for f in fn)
+    elif fn.endswith('.tsv'):
         return num_tsv_examples(fn)
     elif fn.endswith('.tfrecord'):
         return num_tfrecord_examples(fn)
@@ -444,7 +446,25 @@ def get_decode_function(max_seq_len):
         x = (t, s)
         return x, y
     return decode_tfrecord
-    
+
+
+def train_tfrecord_input(filenames, max_seq_len, batch_size, num_threads=10):
+    # Largely following BERT run_pretraining.py with is_training=True,
+    # including shuffling and parallel reading.
+    dataset = tf.data.Dataset.from_tensor_slices(filenames)
+    dataset = dataset.repeat().shuffle(buffer_size=len(filenames))
+    max_concurrent = min(num_threads, len(filenames))
+    dataset = dataset.interleave(
+        tf.data.TFRecordDataset,
+        cycle_length=max_concurrent,
+        num_parallel_calls=max_concurrent
+    )
+    decode = get_decode_function(max_seq_len)
+    dataset = dataset.map(decode, num_parallel_calls=num_threads)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(1)    # TODO optimize
+    return dataset
+
 
 def load_tfrecords(fn, max_seq_len, batch_size):
     decode = get_decode_function(max_seq_len)
