@@ -70,9 +70,9 @@ echo "START $SLURM_JOBID: $(date)"
 
 # https://stackoverflow.com/a/34195247
 if compgen -G "$DATA_DIR/train*.tfrecord" >/dev/null; then
-    train_data=$(ls split-tfrecords/train*.tfrecord | tr '\n' ',' | perl -pe 's/,$//')
+    train_data=$(ls "$DATA_DIR"/train*.tfrecord | tr '\n' ',' | perl -pe 's/,$//')
 else
-    train_data=$(ls split-tfrecords/train*.tsv | tr '\n' ',' | perl -pe 's/,$//')
+    train_data=$(ls "$DATA_DIR"/train*.tsv | tr '\n' ',' | perl -pe 's/,$//')
 fi
 echo "Using $train_data as training data" >&2
 
