@@ -6,4 +6,4 @@ DEFAULT_EPOCHS = 4
 DEFAULT_LR = 5e-5
 DEFAULT_WARMUP_PROPORTION = 0.1
 
-CHECKPOINT_PATH = 'ckpt-epoch-{epoch}-loss-{loss:.2f}.h5'
+CHECKPOINT_PATH = 'ckpt-epoch-{epoch}-loss-{loss:.4f}.h5'

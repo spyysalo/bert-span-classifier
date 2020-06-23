@@ -39,7 +39,7 @@ def timed(f, out=sys.stderr):
         start = time()
         result = f(*args, **kwargs)
         print('@timed: {} completed in {:.1f} sec'.format(
-            f.__name__, time()-start), file=out)
+            f.__name__, time()-start), file=out, flush=True)
         return result
     return wrapper
 
