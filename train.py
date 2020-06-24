@@ -25,25 +25,29 @@ def restore_or_create_model(num_train_examples, num_labels, global_batch_size,
     checkpoints = get_checkpoint_files(options.checkpoint_dir)
     print('Found {} checkpoint files: {}'.format(
         len(checkpoints), checkpoints), file=sys.stderr, flush=True)
-    if checkpoints:
-        latest_checkpoint = checkpoints[0]    # sorted by ctime
-        print('Restoring from checkpoint', latest_checkpoint, file=sys.stderr,
+    for checkpoint in checkpoints:    # sorted by ctime
+        print('Restoring from checkpoint', checkpoint, file=sys.stderr,
               flush=True)
-        return load_model(latest_checkpoint)
-    else:
-        print('Creating new model', file=sys.stderr, flush=True)
-        pretrained_model = load_pretrained(options)
-        output_offset = int(options.max_seq_length/2)
-        model = create_model(pretrained_model, num_labels, output_offset,
-                             options.output_layer)
-        optimizer = create_optimizer(num_train_examples, global_batch_size,
-                                     options)
-        model.compile(
-            optimizer,
-            loss='sparse_categorical_crossentropy',
-            metrics=['sparse_categorical_accuracy']
-        )
-        return model
+        try:
+            return load_model(checkpoint)
+        except Exception as e:
+            warning('Failed to restore from checkpoint {}: {}'.format(
+                checkpoint, e))
+
+    # No checkpoint could be loaded
+    print('Creating new model', file=sys.stderr, flush=True)
+    pretrained_model = load_pretrained(options)
+    output_offset = int(options.max_seq_length/2)
+    model = create_model(pretrained_model, num_labels, output_offset,
+                         options.output_layer)
+    optimizer = create_optimizer(num_train_examples, global_batch_size,
+                                 options)
+    model.compile(
+        optimizer,
+        loss='sparse_categorical_crossentropy',
+        metrics=['sparse_categorical_accuracy']
+    )
+    return model
 
 
 def main(argv):
