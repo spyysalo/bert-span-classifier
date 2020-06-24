@@ -5,5 +5,6 @@ DEFAULT_BATCH_SIZE = 64
 DEFAULT_EPOCHS = 4
 DEFAULT_LR = 5e-5
 DEFAULT_WARMUP_PROPORTION = 0.1
+DEFAULT_MAX_CHECKPOINTS = 10
 
-CHECKPOINT_PATH = 'ckpt-epoch-{epoch}-loss-{loss:.4f}.h5'
+CHECKPOINT_NAME = 'ckpt-epoch-{epoch}-loss-{loss:.4f}.h5'

@@ -2,6 +2,7 @@
 
 import sys
 import os
+import re
 import json
 
 import numpy as np
@@ -23,9 +24,11 @@ from keras_bert import get_custom_objects
 
 from tensorflow.keras.layers import Average, Concatenate
 from tensorflow.keras.utils import Sequence
+from tensorflow.keras.callbacks import Callback
 
 from config import DEFAULT_SEQ_LEN, DEFAULT_BATCH_SIZE, DEFAULT_EPOCHS
 from config import DEFAULT_LR, DEFAULT_WARMUP_PROPORTION
+from config import DEFAULT_MAX_CHECKPOINTS, CHECKPOINT_NAME
 
 
 def print_versions(out=sys.stderr):
@@ -107,6 +110,10 @@ def argument_parser(mode):
             '--checkpoint_steps', type=int, default=None,
             help='How often to save model checkpoints'
         )
+        argparser.add_argument(
+            '--max_checkpoints', type=int, default=DEFAULT_MAX_CHECKPOINTS,
+            help='Maximum number of checkpoints to store'
+        )
     argparser.add_argument(
         '--label_field', type=int, default=-4,
         help='Index of label in TSV data (1-based)'
@@ -136,6 +143,38 @@ def argument_parser(mode):
             help='Port to listen to'
         )
     return argparser
+
+
+def get_checkpoint_files(directory, name=CHECKPOINT_NAME):
+    filenames = []
+    regex = re.compile(r'^' + re.sub(r'{.*}', r'.*', name) + r'$')
+    for fn in os.listdir(directory):
+        if regex.match(fn):
+            filenames.append(fn)
+    paths = [ os.path.join(directory, fn) for fn in filenames ]
+    paths.sort(key=os.path.getctime, reverse=True)
+    return paths
+
+
+def delete_old_checkpoints(directory, name, max_checkpoints):
+    paths = get_checkpoint_files(directory, name)
+    delete = paths[max_checkpoints:]
+    if delete:
+        print('Deleting {}/{} checkpoints: {}'.format(
+            len(delete), len(paths), delete), file=sys.stderr, flush=True)
+    for path in delete:
+        os.remove(path)
+
+
+class DeleteOldCheckpoints(Callback):
+    def __init__(self, checkpoint_dir, checkpoint_name, max_checkpoints):
+        self._checkpoint_dir = checkpoint_dir
+        self._checkpoint_name = checkpoint_name
+        self._max_checkpoints = max_checkpoints
+
+    def on_batch_end(self, batch, logs=None):
+        delete_old_checkpoints(
+            self._checkpoint_dir, self._checkpoint_name, self._max_checkpoints)
 
 
 @timed

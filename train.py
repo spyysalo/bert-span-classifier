@@ -15,19 +15,19 @@ from common import load_pretrained, load_model, get_tokenizer, load_labels
 from common import load_dataset, train_tfrecord_input, TsvSequence
 from common import tokenize_texts, encode_tokenized, num_examples
 from common import create_model, create_optimizer, save_model_etc
+from common import get_checkpoint_files, DeleteOldCheckpoints
 
-from config import CHECKPOINT_PATH
+from config import CHECKPOINT_NAME
 
 
 def restore_or_create_model(num_train_examples, num_labels, global_batch_size,
                             options):
-    checkpoints = [
-        os.path.join(options.checkpoint_dir, fn)
-        for fn in os.listdir(options.checkpoint_dir)
-    ]
+    checkpoints = get_checkpoint_files(options.checkpoint_dir)
+    print('Found {} checkpoint files: {}'.format(
+        len(checkpoints), checkpoints), file=sys.stderr, flush=True)
     if checkpoints:
-        latest_checkpoint = max(checkpoints, key=os.path.getctime)
-        print('Loading checkpoint from', latest_checkpoint, file=sys.stderr,
+        latest_checkpoint = checkpoints[0]    # sorted by ctime
+        print('Restoring from checkpoint', latest_checkpoint, file=sys.stderr,
               flush=True)
         return load_model(latest_checkpoint)
     else:
@@ -105,8 +105,11 @@ def main(argv):
     callbacks = []
     if args.checkpoint_steps is not None:
         callbacks.append(ModelCheckpoint(
-            filepath=os.path.join(args.checkpoint_dir, CHECKPOINT_PATH),
+            filepath=os.path.join(args.checkpoint_dir, CHECKPOINT_NAME),
             save_freq=args.checkpoint_steps
+        ))
+        callbacks.append(DeleteOldCheckpoints(
+            args.checkpoint_dir, CHECKPOINT_NAME, args.max_checkpoints
         ))
 
     if input_format == 'tsv':
